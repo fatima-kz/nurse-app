@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image"; // Added this import
 import Layout from "@/components/Layout";
@@ -17,8 +17,27 @@ import {
   Award,
   ExternalLink
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User } from "@/entities/User";
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        const currentUser = await User.me();
+        if (currentUser) {
+          router.push("/dashboard");
+        }
+      } catch (error) {
+        console.error("Error checking user status:", error);
+      }
+    };
+
+    checkUserStatus();
+  }, [router]);
+
   const features = [
     {
       icon: CheckCircle,

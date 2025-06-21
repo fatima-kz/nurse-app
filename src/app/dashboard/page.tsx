@@ -3,9 +3,11 @@
 "use client"; // This component will be client-side
 
 import React, { useState, useEffect, useCallback } from "react";
-import { User, UserProfile } from "@/entities/User";
+import { UserProfile } from "@/entities/User";
 import { TestResult } from "@/entities/TestResult";
 import { createPageUrl } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import CheckoutButton from "@/components/CheckoutButton";
@@ -68,17 +70,26 @@ const calculateAverageScore = (testHistory: TestResultDisplay[]) => {
 };
 
 export default function DashboardContent() {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const { user: authUser, userProfile, loading: authLoading } = useAuth();
   const [testHistory, setTestHistory] = useState<TestResultDisplay[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      router.push('/auth');
+      return;
+    }
+  }, [authUser, authLoading, router]);
+  console.log("DashboardContent rendered with user:", authUser?.email || "No user");
   const loadDashboardData = useCallback(async () => {
+    console.log("Loading dashboard data for user:", userProfile?.email || "No user profile");
+    if (!userProfile) return; // Wait for profile data
+    
     try {
-      const currentUser = await User.me();
-      setUser(currentUser);
-
       const rawResults = await TestResult.filter(
-        { user_email: currentUser.email },
+        { user_email: userProfile.email },
         "-test_date",
         10
       );
@@ -92,13 +103,17 @@ export default function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userProfile]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []); // Only run once on mount
+    if (userProfile) {
+      console.log("Loading dashboard data for:", userProfile.full_name);
+      loadDashboardData();
+    }
+  }, [userProfile, loadDashboardData]);
 
-  if (loading) {
+  // Show loading while checking auth or waiting for profile
+  if (authLoading || !userProfile || loading) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
@@ -106,6 +121,11 @@ export default function DashboardContent() {
         </div>
       </Layout>
     );
+  }
+
+  // Don't render if not authenticated
+  if (!authUser) {
+    return null;
   }
   // ... rest of your Dashboard component's return JSX
   return (
@@ -115,16 +135,14 @@ export default function DashboardContent() {
                  {/* Welcome Header */}
                  <div className="mb-8">
                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                         <div>
-                             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                                 Welcome back, {user?.full_name?.split(' ')[0] || 'Student'} 👋
+                         <div>                             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                                 Welcome back, {userProfile?.full_name?.split(' ')[0] || 'Student'} 👋
                              </h1>
                              <p className="text-gray-600 text-lg">
                                  Ready to continue your nursing exam preparation?
                              </p>
-                         </div>
-                         <div className="flex items-center gap-3">
-                             {getSubscriptionBadge(user)}
+                         </div>                         <div className="flex items-center gap-3">
+                             {getSubscriptionBadge(userProfile)}
                              <Link href={createPageUrl("Test")}>
                                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-lg transform hover:-translate-y-0.5 flex items-center gap-2">
                                      <PlayCircle className="w-5 h-5" />
@@ -141,9 +159,8 @@ export default function DashboardContent() {
                          <CardContent className="p-6">
                              <div className="flex items-center justify-between">
                                  <div>
-                                     <p className="text-blue-600 text-sm font-medium">Total Questions</p>
-                                     <p className="text-2xl font-bold text-blue-900">
-                                         {user?.total_questions_answered || 0}
+                                     <p className="text-blue-600 text-sm font-medium">Total Questions</p>                                     <p className="text-2xl font-bold text-blue-900">
+                                         {userProfile?.total_questions_answered || 0}
                                      </p>
                                  </div>
                                  <BookOpen className="w-8 h-8 text-blue-600" />
@@ -157,7 +174,7 @@ export default function DashboardContent() {
                                  <div>
                                      <p className="text-green-600 text-sm font-medium">Best Score</p>
                                      <p className="text-2xl font-bold text-green-900">
-                                         {user?.best_score || 0}%
+                                         {userProfile?.best_score || 0}%
                                      </p>
                                  </div>
                                  <Award className="w-8 h-8 text-green-600" />
@@ -281,21 +298,21 @@ export default function DashboardContent() {
                              <CardContent>
                                  
                                  <div className="space-y-4">
-                                     {getSubscriptionBadge(user)}
-                                     {user?.subscription_status === "trial" && user?.subscription_end_date && (
+                                     {getSubscriptionBadge(userProfile)}
+                                     {userProfile?.subscription_status === "trial" && userProfile?.subscription_end_date && (
                                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                              <p className="text-sm text-yellow-800 mb-2">
-                                                 <strong>Trial ends:</strong> {format(new Date(user.subscription_end_date), "MMM d, yyyy")}
+                                                 <strong>Trial ends:</strong> {format(new Date(userProfile.subscription_end_date), "MMM d, yyyy")}
                                              </p>
                                              <CheckoutButton
-                                                 userEmail={user.email}
-                                                 userId={user.id}
+                                                 userEmail={userProfile.email}
+                                                 userId={userProfile.id}
                                                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm"
                                              />
                                          </div>
                                      )}
                                      
-                                     {user?.subscription_status === "active" && (
+                                     {userProfile?.subscription_status === "active" && (
                                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                              <p className="text-sm text-green-800">
                                                  You have full access to all features! Keep up the great work.
@@ -316,13 +333,13 @@ export default function DashboardContent() {
                                      <div>
                                          <div className="flex justify-between text-sm mb-2">
                                              <span>Overall Progress</span>
-                                             <span>{Math.min(100, Math.round((user?.total_questions_answered || 0) / 10))}%</span>
+                                             <span>{Math.min(100, Math.round((userProfile?.total_questions_answered || 0) / 10))}%</span>
                                          </div>
-                                         <Progress value={Math.min(100, Math.round((user?.total_questions_answered || 0) / 10))} className="h-2" />
+                                         <Progress value={Math.min(100, Math.round((userProfile?.total_questions_answered || 0) / 10))} className="h-2" />
                                      </div>
                                      
                                      <div className="text-sm text-gray-600">
-                                         <p>Questions answered: {user?.total_questions_answered || 0}/1000+</p>
+                                         <p>Questions answered: {userProfile?.total_questions_answered || 0}/1000+</p>
                                          <p>Tests completed: {testHistory.length}</p>
                                      </div>
                                  </div>

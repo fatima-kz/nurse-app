@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 "use client"
 
 import { useEffect } from 'react'
@@ -8,41 +6,14 @@ import { createClient } from '@/lib/supabase' // Assuming this is your client-si
 
 export default function AuthCallback() {
   const router = useRouter()
-
   useEffect(() => {
     const supabase = createClient()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) =>{
       if (event === 'SIGNED_IN') {
+        console.log("User signed in, redirecting to dashboard...");
         subscription.unsubscribe()
-
-          try {
-            await import('@/entities/User').then(module => module.User.me())
-            
-            console.log("Profile exists, redirecting to dashboard.");
-            router.push('/dashboard')
-
-          } catch { // Changed from 'catch (profileError)' to just 'catch'
-            console.log("No profile found, creating a new one...");
-            try {
-              const { User } = await import('@/entities/User')
-              await User.updateMyUserData({
-                registration_date: new Date().toISOString().split('T')[0],
-                subscription_status: "trial",
-                subscription_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                total_questions_answered: 0,
-                best_score: 0
-              })
-              
-              console.log("New profile created, redirecting to dashboard.");
-              router.push('/dashboard')
-
-            } catch (updateError) {
-              console.error('Error creating user profile:', updateError)
-              router.push('/dashboard')
-            }
-          }
+        router.push('/dashboard')
       }
     })
 

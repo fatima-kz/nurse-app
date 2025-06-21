@@ -18,6 +18,7 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
   const { user, userProfile, loading, signOut } = useAuth();
 
   const handleLogout = async () => {
+    console.log("Logging out user:", user?.email || "Unknown User");
     await signOut();
     router.push('/');
   };

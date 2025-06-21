@@ -110,12 +110,14 @@ export interface UserProfile {
 export class User { 
   static async login() {
     const supabase = createClient()
+    console.log("Redirecting to Google OAuth for login...");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`
       }
     })
+    console.log("OAuth initiated, waiting for callback...");
     
     if (error) throw error
     return data
@@ -123,9 +125,12 @@ export class User {
 
   static async logout() {
     const supabase = createClient()
+    console.log("Logging out user...");
     const { error } = await supabase.auth.signOut()
     if (error) throw error
-  }  static async me(): Promise<UserProfile> {
+  }  
+  
+  static async me(): Promise<UserProfile> {
     const supabase = createClient();
 
     try {

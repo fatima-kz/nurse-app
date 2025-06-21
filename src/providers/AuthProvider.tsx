@@ -1,17 +1,15 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import { UserProfile } from '@/entities/User'
-import { useCallback } from 'react'
 
 interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
   signOut: () => Promise<void>
-  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -20,47 +18,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true);  
-  const supabase = createClient();
-
-  
-
-  const refreshUser = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      if (user) {
-        // Fetch user profile
-        try {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single()
-          
-          setUserProfile(profile)
-        } catch (profileError) {
-          console.log('User profile not found, will be created on first interaction', profileError)
-          setUserProfile(null)
-        }
-      } else {
-        setUserProfile(null)
-      }
-    } catch (error) {
-      console.error('Error refreshing user:', error)
-      setUser(null)
-      setUserProfile(null)
-    }
-  }, [supabase])
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
+      console.log('Checking initial session...')
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
-      
+      console.log('Initial session:', session)
+      // Fetch profile directly if user exists
       if (session?.user) {
-        await refreshUser()
+        try {
+          const { User } = await import('@/entities/User')
+          console.log('Fetching user profile for:', session.user.email)
+          const profile = await User.me()
+          setUserProfile(profile)
+          console.log('Fetched user profile:', profile)
+        } catch (error) {
+          console.error('Failed to fetch profile:', error)
+          setUserProfile(null)
+        }
       }
       
       setLoading(false)
@@ -74,7 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
         
         if (session?.user) {
-          await refreshUser()
+          // Fetch profile directly - no need for refreshUser
+          try {
+            const { User } = await import('@/entities/User')
+            const profile = await User.me()
+            setUserProfile(profile)
+          } catch (error) {
+            console.error('Failed to fetch profile:', error)
+            setUserProfile(null)
+          }
         } else {
           setUserProfile(null)
         }
@@ -84,20 +70,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  })
+  }, [supabase.auth])
 
   const signOut = async () => {
+    console.log('Signing out user from AuthProvider:', user?.email || 'Unknown User')
     await supabase.auth.signOut()
     setUser(null)
     setUserProfile(null)
   }
-
   const value = {
     user,
     userProfile,
     loading,
-    signOut,
-    refreshUser
+    signOut
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

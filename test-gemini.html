@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Gemini Explanation API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .question-block {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .options {
+            display: grid;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .option {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .option:hover {
+            border-color: #007bff;
+            background: #f8f9fa;
+        }
+        .option.correct {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .option.incorrect {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        .option.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        .test-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-btn:hover {
+            background: #0056b3;
+        }
+        .test-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .loading {
+            color: #007bff;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #c3e6cb;
+        }
+        .explanation {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 Test Gemini Explanation API</h1>
+    
+    <div class="container">
+        <h2>Sample Nursing Question</h2>
+        <div class="question-block">
+            <p><strong>Question:</strong> A 65-year-old patient is admitted with chest pain and shortness of breath. The ECG shows ST-elevation in leads II, III, and aVF. What is the most likely location of the myocardial infarction?</p>
+            
+            <div class="options">
+                <div class="option" data-option="A">
+                    <strong>A.</strong> Anterior wall
+                </div>
+                <div class="option" data-option="B">
+                    <strong>B.</strong> Posterior wall
+                </div>
+                <div class="option" data-option="C">
+                    <strong>C.</strong> Lateral wall
+                </div>
+                <div class="option correct" data-option="D">
+                    <strong>D.</strong> Inferior wall ✓ (Correct Answer)
+                </div>
+            </div>
+            
+            <p><strong>User Selected:</strong> <span id="userAnswer">B (Posterior wall)</span> ❌</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <button class="test-btn" onclick="testGeminiExplanation()">
+                🚀 Test Gemini Explanation
+            </button>
+            <button class="test-btn" onclick="testWithCustomPrompt()">
+                ✏️ Test Custom Prompt
+            </button>
+            <button class="test-btn" onclick="clearResults()">
+                🗑️ Clear Results
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>Custom Prompt Test</h3>
+        <textarea id="customPrompt" rows="4" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd;" placeholder="Enter your custom prompt here...">You are a nursing instructor. Explain why the correct answer to this ECG question is 'Inferior wall' when the patient shows ST-elevation in leads II, III, and aVF. The student selected 'Posterior wall' which is incorrect. Provide a clear, educational explanation.</textarea>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        let isLoading = false;
+
+        async function testGeminiExplanation() {
+            if (isLoading) return;
+            
+            const prompt = `You are an experienced nursing instructor providing feedback to a student who just answered a question incorrectly.
+
+Question: A 65-year-old patient is admitted with chest pain and shortness of breath. The ECG shows ST-elevation in leads II, III, and aVF. What is the most likely location of the myocardial infarction?
+
+Correct Answer: D. Inferior wall
+Student's Answer: B. Posterior wall
+Student was INCORRECT.
+
+Please provide a clear, educational explanation that:
+1. Explains why the correct answer (Inferior wall) is right
+2. Explains why the student's choice (Posterior wall) is wrong
+3. Helps the student understand ECG lead interpretation
+4. Encourages the student to keep learning
+
+Keep the explanation concise but educational, around 100-150 words.`;
+
+            await callGeminiAPI(prompt, 'Sample Nursing Question');
+        }
+
+        async function testWithCustomPrompt() {
+            if (isLoading) return;
+            
+            const customPrompt = document.getElementById('customPrompt').value.trim();
+            if (!customPrompt) {
+                showError('Please enter a custom prompt');
+                return;
+            }
+            
+            await callGeminiAPI(customPrompt, 'Custom Prompt');
+        }
+
+        async function callGeminiAPI(prompt, testType) {
+            if (isLoading) return;
+            
+            isLoading = true;
+            updateButtons();
+            
+            const startTime = Date.now();
+            showLoading(`Testing ${testType}...`);
+            
+            try {
+                console.log('Sending request to Gemini API:', { prompt });
+                
+                const response = await fetch('/api/gemini-explanation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                const responseTime = Date.now() - startTime;
+                console.log('Response received in:', responseTime + 'ms');
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP ${response.status}: ${errorData.error || 'Unknown error'}`);
+                }
+                
+                const data = await response.json();
+                console.log('Gemini API response:', data);
+                
+                showSuccess(data.explanation, testType, responseTime);
+                
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                showError(`Failed to get explanation: ${error.message}`);
+            } finally {
+                isLoading = false;
+                updateButtons();
+            }
+        }
+
+        function showLoading(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="result">
+                    <div class="loading">
+                        🔄 ${message}
+                    </div>
+                </div>
+            `;
+        }
+
+        function showSuccess(explanation, testType, responseTime) {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="result">
+                    <div class="success">
+                        ✅ ${testType} - Success (${responseTime}ms)
+                    </div>
+                    <div class="explanation">
+                        <strong>Gemini Explanation:</strong><br><br>${explanation}
+                    </div>
+                    <small style="color: #666; margin-top: 10px; display: block;">
+                        Response time: ${responseTime}ms | ${new Date().toLocaleTimeString()}
+                    </small>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="result">
+                    <div class="error">
+                        ❌ ${message}
+                    </div>
+                    <small style="color: #666; margin-top: 10px; display: block;">
+                        ${new Date().toLocaleTimeString()}
+                    </small>
+                </div>
+            `;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function updateButtons() {
+            const buttons = document.querySelectorAll('.test-btn');
+            buttons.forEach(btn => {
+                if (btn.onclick.toString().includes('testGemini') || btn.onclick.toString().includes('testWithCustom')) {
+                    btn.disabled = isLoading;
+                    if (isLoading) {
+                        btn.textContent = btn.textContent.includes('Custom') ? '⏳ Testing...' : '⏳ Testing...';
+                    } else {
+                        btn.textContent = btn.textContent.includes('Custom') ? '✏️ Test Custom Prompt' : '🚀 Test Gemini Explanation';
+                    }
+                }
+            });
+        }
+
+        // Test different types of prompts
+        function addMoreTests() {
+            console.log('Additional test functions can be added here');
+        }
+    </script>
+</body>
+</html>

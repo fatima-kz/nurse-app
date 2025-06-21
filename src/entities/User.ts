@@ -125,63 +125,61 @@ export class User {
     const supabase = createClient()
     const { error } = await supabase.auth.signOut()
     if (error) throw error
-  }
+  }  static async me(): Promise<UserProfile> {
+    const supabase = createClient();
 
-  static async me(): Promise<UserProfile> {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      throw new Error('Not authenticated')
-    }
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    // Get or create user profile
-    let { data: profile } = await supabase // 'profile' needs to remain 'let'
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    const { error } = await supabase // Declare 'error' as 'const' separately
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (error && error.code === 'PGRST116') {
-      // User doesn't exist, create profile
-      const newProfile = {
-        id: user.id,
-        email: user.email!,
-        full_name: user.user_metadata?.full_name || user.email!,
-        registration_date: new Date().toISOString().split('T')[0],
-        subscription_status: 'trial' as const,
-        subscription_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        total_questions_answered: 0,
-        best_score: 0
+      if (authError || !user) {
+        console.error("Authentication error or user not found:", authError);
+        throw new Error("Not authenticated");
       }
 
-      const { data: createdProfile, error: createError } = await supabase
-        .from('users')
-        .insert(newProfile)
-        .select()
-        .single()
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
-      if (createError) throw createError
-      profile = createdProfile as UserProfile // Reassign 'profile'
-    } else if (error) {
-      throw error
-    }
+      if (error && error.code === "PGRST116") {
+        const newProfile = {
+          id: user.id,
+          email: user.email!,
+          full_name: user.user_metadata?.full_name || user.email!,
+          registration_date: new Date().toISOString().split("T")[0],
+          subscription_status: "trial" as const,
+          subscription_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          total_questions_answered: 0,
+          best_score: 0,
+        };
 
-    // Supabase .single() can return null if no row is found.
-    // If 'profile' is still null here, it means something went wrong,
-    // or the initial select didn't find anything AND the create failed or wasn't needed.
-    // Ensure 'profile' is indeed a UserProfile before returning.
-    if (!profile) {
+        const { data: createdProfile, error: createError } = await supabase
+          .from("users")
+          .insert(newProfile)
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Error creating user profile:", createError);
+          throw createError;
+        }
+
+        return createdProfile as UserProfile;
+      } else if (error) {
+        console.error("Error fetching user profile:", error);
+        throw error;
+      }
+
+      if (!profile) {
         throw new Error("User profile could not be loaded or created.");
-    }
+      }
 
-    return profile
+      return profile as UserProfile;
+    } catch (err) {
+      console.error("Unexpected error in User.me():", err);
+      throw err;
+    }
   }
 
   static async updateMyUserData(updates: Partial<UserProfile>) {

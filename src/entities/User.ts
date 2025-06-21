@@ -105,6 +105,7 @@ export interface UserProfile {
   best_score?: number
   created_at?: string
   updated_at?: string
+  // test_taken?: number
 }
 
 export class User { 
@@ -157,6 +158,7 @@ export class User {
           subscription_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
           total_questions_answered: 0,
           best_score: 0,
+          // test_taken: 0,
         };
 
         const { data: createdProfile, error: createError } = await supabase

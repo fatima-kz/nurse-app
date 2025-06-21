@@ -122,7 +122,7 @@ export default function DashboardContent() {
       </Layout>
     );
   }
-
+  console.log(userProfile);
   // Don't render if not authenticated
   if (!authUser) {
     return null;

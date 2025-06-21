@@ -3,31 +3,37 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import test from "node:test";
+import { TestResult } from "@/entities/TestResult";
+import Link from "next/link";
+import { User } from "@/entities/User";
+
 // Removed Next.js and aliased imports as they are not available in this environment.
 
 // --- MOCK IMPLEMENTATIONS ---
 // The following are placeholder implementations to allow the component to run.
 // In a real Next.js app, these would be your actual components and modules.
 
-const useRouter = () => ({
-  push: (path: string) => console.log(`Navigating to: ${path}`),
-});
+// const useRouter = () => ({
+//   push: (path: string) => console.log(`Navigating to: ${path}`),
+// });
 
-const Link = ({ href, children, className }: { href: string, children: React.ReactNode, className?: string }) => (
-  <a href={href} className={className}>{children}</a>
-);
+// const Link = ({ href, children, className }: { href: string, children: React.ReactNode, className?: string }) => (
+//   <a href={href} className={className}>{children}</a>
+// );
 
-const User = {
-  me: async () => ({
-    email: "student@test.com",
-    total_questions_answered: 10,
-    best_score: 80,
-  }),
-  updateMyUserData: async (data: any) => {  
-    console.log("Updating user data:", data);
-    return Promise.resolve();
-  },
-};
+// const User = {
+//   me: async () => ({
+//     email: "student@test.com",
+//     total_questions_answered: 10,
+//     best_score: 80,
+//   }),
+//   updateMyUserData: async (data: any) => {  
+//     console.log("Updating user data:", data);
+//     return Promise.resolve();
+//   },
+// };
 
 // const Question = {
 //   list: async (sort: string, limit: number) => {
@@ -48,12 +54,12 @@ const User = {
 //   },
 // };
 
-const TestResult = {
-  create: async (data: any) => {
-    console.log("Creating test result:", data);
-    return Promise.resolve();
-  },
-};
+// const TestResult = {
+//   create: async (data: any) => {
+//     console.log("Creating test result:", data);
+//     return Promise.resolve();
+//   },
+// };
 
 // const InvokeLLM = async ({ prompt, response_json_schema }: any) => {
 //   console.log("Invoking LLM with prompt:", prompt);
@@ -68,8 +74,8 @@ const createPageUrl = (pageName: string) => `/${pageName.toLowerCase()}`;
 const Button = ({ children, onClick, disabled, className }: any) => <button onClick={onClick} disabled={disabled} className={`p-2 border rounded ${className}`}>{children}</button>;
 const Card = ({ children, className }: any) => <div className={`border rounded-lg shadow-md ${className}`}>{children}</div>;
 const CardHeader = ({ children }: any) => <div className="p-4 border-b">{children}</div>;
-const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{children}</h2>;
-const CardContent = ({ children }: any) => <div className="p-4">{children}</div>;
+const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold text-black">{children}</h2>;
+const CardContent = ({ children }: any) => <div className="p-4 text-black">{children}</div>;
 const Progress = ({ value }: any) => <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${value}%` }}></div></div>;
 const Badge = ({ children, className }: any) => <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>{children}</span>;
 const Alert = ({ children, className }: any) => <div className={`p-4 rounded-md ${className}`}>{children}</div>;
@@ -91,6 +97,7 @@ interface UserProfile {
   email: string;
   total_questions_answered?: number;
   best_score?: number;
+  // test_taken?: number;
 }
 
 interface TestSession {
@@ -316,7 +323,8 @@ export default function Test() {
         time_spent: timeSpent
       });
       await User.updateMyUserData({
-        best_score: Math.max(user.best_score || 0, percentageScore)
+        best_score: Math.max(user.best_score || 0, percentageScore),
+        // test_taken: (user.test_taken || 0) + 1
       });
       router.push('/dashboard');
     } catch (error) {
@@ -351,6 +359,18 @@ export default function Test() {
               </Link>
             </CardContent>
           </Card>
+        </div>
+      </Layout>
+    );
+  }
+  if (loadingNextQuestion) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading next question...</p>
+          </div>
         </div>
       </Layout>
     );

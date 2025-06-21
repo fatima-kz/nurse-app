@@ -15,7 +15,6 @@ export default function AuthCallback() {
       if (event === 'SIGNED_IN') {
         subscription.unsubscribe()
 
-        if (session) {
           try {
             await import('@/entities/User').then(module => module.User.me())
             
@@ -42,7 +41,6 @@ export default function AuthCallback() {
               router.push('/dashboard')
             }
           }
-        }
       }
     })
 
